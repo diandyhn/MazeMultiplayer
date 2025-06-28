@@ -176,18 +176,37 @@ class MazeGame:
         return img_str
 
     def is_valid_position(self, x, y):
-        """Check if position is valid (not in a wall)"""
-        # Convert pixel coordinates to maze coordinates
-        maze_x = x // self.cell_size
-        maze_y = y // self.cell_size
-        
-        # Check bounds
-        if (maze_x < 0 or maze_x >= self.maze_width or 
-            maze_y < 0 or maze_y >= self.maze_height):
-            return False
-            
-        # Check if it's a wall
-        return self.maze[maze_y][maze_x] == 0
+        """Check if the player's full bounding circle is within valid maze paths"""
+        # Radius player circle of 14 pixels (from player image size 28x28)
+        radius = 14
+
+        # 9 points: center + 4 sides + 4 corners
+        edge_points = [
+            (x + radius, y + radius),              # Center
+            (x, y + radius),                       # Left
+            (x + 2 * radius, y + radius),          # Right
+            (x + radius, y),                       # Top
+            (x + radius, y + 2 * radius),          # Bottom
+            (x, y),                                # Top-left corner
+            (x + 2 * radius, y),                   # Top-right corner
+            (x, y + 2 * radius),                   # Bottom-left corner
+            (x + 2 * radius, y + 2 * radius),      # Bottom-right corner
+        ]
+
+        for px, py in edge_points:
+            maze_x = px // self.cell_size
+            maze_y = py // self.cell_size
+
+            # Check bounds
+            if (maze_x < 0 or maze_x >= self.maze_width or 
+                maze_y < 0 or maze_y >= self.maze_height):
+                return False
+
+            # Check wall
+            if self.maze[maze_y][maze_x] != 0:
+                return False
+
+        return True
 
     def move_player(self, player_id, new_x, new_y):
         """Move player if the new position is valid"""
