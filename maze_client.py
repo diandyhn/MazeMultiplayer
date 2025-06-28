@@ -825,7 +825,7 @@ def main():
         import os
         os.environ['SDL_VIDEO_WINDOW_POS'] = '100,100'
 
-        game = Game()  # No arguments needed now
+        game = Game()
         game.run()
     except Exception as e:
         print(f"❌ Error starting game: {e}")

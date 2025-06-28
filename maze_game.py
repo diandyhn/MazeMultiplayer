@@ -286,6 +286,3 @@ class MazeGame:
                 'y': self.start_pos[1] * self.cell_size
             }
             self.player_stats[player_id]['games_played'] += 1
-
-# Global game instance
-game = MazeGame()
