@@ -11,7 +11,7 @@ import random
 # Initialize Pygame
 pygame.init()
 
-WIDTH, HEIGHT = 1200, 800
+WIDTH, HEIGHT = 1024, 768
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("🎮 Escape The Maze - Enhanced Multiplayer")
 
@@ -114,7 +114,7 @@ class ClientInterface:
     def __init__(self, player_id='1', player_name='Player'):
         self.player_id = player_id
         self.player_name = player_name
-        self.server_address = ('127.0.0.1', 55556)
+        self.server_address = ('172.16.16.101', 55556)
 
     def send_command(self, command_str=""):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -452,7 +452,7 @@ class Game:
             if not self.update_game_state():
                 self.connection_error = "Failed to get game state from server"
                 return False
-                
+
             return True
             
         except Exception as e:
@@ -465,7 +465,13 @@ class Game:
             self.game_state = self.client_interface.get_game_state()
             if not self.game_state or self.game_state.get('status') == 'ERROR':
                 return False
-                
+
+            # Check if the game was reset
+            previous_round = getattr(self, 'current_round', 0)
+            current_round = self.game_state.get('round_number', 1)
+            game_was_reset = current_round > previous_round
+            self.current_round = current_round
+
             self.maze_renderer = MazeRenderer(self.game_state)
             
             # Update other players with enhanced info
@@ -476,6 +482,22 @@ class Game:
                         player_info = self.game_state.get('player_info', {}).get(player_id, {})
                         player_name = player_info.get('name', f'Player {player_id}')
                         self.other_players[player_id] = Player(player_id, player_name, is_local=False)
+            
+            #if game was reset, sync player positions
+            if game_was_reset and self.maze_renderer:
+                start_x = self.maze_renderer.start_pos[0] * self.maze_renderer.cell_size
+                start_y = self.maze_renderer.start_pos[1] * self.maze_renderer.cell_size
+
+                if self.current_player:
+                    self.current_player.x = start_x
+                    self.current_player.y = start_y
+                
+                for player_id, player in self.other_players.items():
+                    server_pos = self.client_interface.get_location(player_id)
+                    if server_pos:
+                        player.x, player.y = server_pos
+                    else:
+                        player.x, player.y = start_x, start_y
             
             self.winner = self.game_state.get('winner')
             return True
@@ -631,6 +653,22 @@ class Game:
         if result['status'] == 'OK':
             self.winner = None
             self.update_game_state()
+
+            #Syncs player initial position
+            if self.current_player and self.maze_renderer:
+                start_x = self.maze_renderer.start_pos[0] * self.maze_renderer.cell_size
+                start_y = self.maze_renderer.start_pos[1] * self.maze_renderer.cell_size
+                self.current_player.x = start_x
+                self.current_player.y = start_y
+
+                #syncs other players
+                for player_id, player in self.other_players.items():
+                    server_pos = self.client_interface.get_location(player_id)
+                    if server_pos:
+                        player.x, player.y = server_pos
+                    else:
+                        player.x, player.y = start_x, start_y
+
             # Add reset particles
             for _ in range(20):
                 self.particle_system.add_particle(
@@ -649,7 +687,7 @@ class Game:
             
         running = True
         last_update = 0
-        
+
         print("🎮 Enhanced game window opened!")
         print(f"🏃 Playing as: {self.player_name}")
         
