@@ -114,7 +114,7 @@ class ClientInterface:
     def __init__(self, player_id='1', player_name='Player'):
         self.player_id = player_id
         self.player_name = player_name
-        self.server_address = ('172.16.16.101', 55556)
+        self.server_address = ('localhost', 55556)
 
     def send_command(self, command_str=""):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -352,41 +352,50 @@ class Player:
         return image
 
     def move(self, keys, maze_renderer, particle_system):
-        """Enhanced move with trail effects"""
+        """Process player movement input"""
         if not self.is_local:
             pos = self.client_interface.get_location()
             if pos:
                 old_x, old_y = self.x, self.y
                 self.x, self.y = pos
-                
-                # Add trail for movement
+
                 if old_x != self.x or old_y != self.y:
                     self.add_trail_particle(old_x + 14, old_y + 14, particle_system)
             return
-
-        # Handle local player movement
+        
+        # Handle player movement
         new_x, new_y = self.x, self.y
         moved = False
 
-        if keys[pygame.K_UP] or keys[pygame.K_w]:
-            new_y -= self.speed
-            moved = True
-        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            new_y += self.speed
-            moved = True
-        elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            new_x -= self.speed
-            moved = True
-        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            new_x += self.speed
-            moved = True
+        # Check x-direction (left/right)
+        proposed_x = new_x
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            proposed_x -= self.speed
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            proposed_x += self.speed
 
-        if moved and (new_x != self.x or new_y != self.y):
-            if self.client_interface.set_location(new_x, new_y):
-                # Add trail particle
+        # Send x movement separately to server to test if it's valid
+        if proposed_x != self.x:
+            if self.client_interface.set_location(proposed_x, self.y):
                 self.add_trail_particle(self.x + 14, self.y + 14, particle_system)
-                self.x, self.y = new_x, new_y
-                self.last_move_time = pygame.time.get_ticks()
+                self.x = proposed_x
+                moved = True
+
+        # Check y-direction (up/down)
+        proposed_y = new_y
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            proposed_y -= self.speed
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            proposed_y += self.speed
+
+        if proposed_y != self.y:
+            if self.client_interface.set_location(self.x, proposed_y):
+                self.add_trail_particle(self.x + 14, self.y + 14, particle_system)
+                self.y = proposed_y
+                moved = True
+
+        if moved:
+            self.last_move_time = pygame.time.get_ticks()
 
     def add_trail_particle(self, x, y, particle_system):
         """Add trail particle effect"""
