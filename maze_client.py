@@ -7,6 +7,7 @@ import json
 import base64
 import math
 import random
+import string
 
 # Initialize Pygame
 pygame.init()
@@ -425,28 +426,92 @@ class Player:
         surface.blit(name_text, name_rect)
 
 class Game:
-    def __init__(self, player_id, player_name):
-        self.player_id = player_id
-        self.player_name = player_name
-        self.client_interface = ClientInterface(player_id, player_name)
+    def __init__(self):
+        self.player_id = self.generate_unique_id()
+        self.player_name = self.input_player_name()
+
+        self.client_interface = ClientInterface(self.player_id, self.player_name)
         self.current_player = None
         self.other_players = {}
         self.maze_renderer = None
         self.winner = None
         self.game_state = None
         self.particle_system = ParticleSystem()
-        
-        # Enhanced fonts
+
         self.font_large = pygame.font.Font(None, 48)
         self.font_medium = pygame.font.Font(None, 32)
         self.font_small = pygame.font.Font(None, 24)
         self.font_tiny = pygame.font.Font(None, 18)
-        
+
         self.connection_error = None
         self.ui_animations = {'score_pulse': 0, 'winner_glow': 0}
-        
+
         if not self.initialize_game():
             return
+
+    def generate_unique_id(self, length=8, max_attempts=10):
+        """Generate a unique ID that is not used in the game yet."""
+        # Get existing player IDs from the server
+        try:
+            client = ClientInterface()
+            existing_ids = client.get_all_players()
+        except Exception as e:
+            print(f"Failed to get existing IDs: {e}")
+            return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+        # Generate a unique ID
+        for _ in range(max_attempts):
+            candidate_id = ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+            if candidate_id not in existing_ids:
+                print(f"Using unique player ID: {candidate_id}")
+                return candidate_id
+            else:
+                print(f"ID '{candidate_id}' already exists. Retrying...")
+
+        print("Maximum ID generation attempts reached. Proceeding anyway.")
+        return candidate_id
+
+    def input_player_name(self):
+        font = pygame.font.Font(None, 48)
+        input_box = pygame.Rect(WIDTH // 2 - 200, HEIGHT // 2 - 30, 400, 60)
+        color_inactive = COLORS['LIGHT_GRAY']
+        color_active = COLORS['WHITE']
+        color = color_inactive
+        active = False
+        text = ''
+
+        instructions = font.render("Enter your player name", True, COLORS['WHITE'])
+        running = True
+
+        while running:
+            screen.fill(COLORS['BACKGROUND'])
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    active = input_box.collidepoint(event.pos)
+                    color = color_active if active else color_inactive
+                elif event.type == pygame.KEYDOWN:
+                    if active:
+                        if event.key == pygame.K_RETURN and text.strip():
+                            return text.strip()
+                        elif event.key == pygame.K_BACKSPACE:
+                            text = text[:-1]
+                        elif len(text) < 20:
+                            text += event.unicode
+
+            pygame.draw.rect(screen, COLORS['UI_BACKGROUND'], input_box, border_radius=10)
+            pygame.draw.rect(screen, color, input_box, 2, border_radius=10)
+
+            txt_surface = font.render(text, True, COLORS['WHITE'])
+            screen.blit(txt_surface, (input_box.x + 10, input_box.y + 15))
+
+            instruction_rect = instructions.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 80))
+            screen.blit(instructions, instruction_rect)
+
+            pygame.display.flip()
+            clock.tick(30)
 
     def initialize_game(self):
         """Initialize game with enhanced error handling"""
@@ -755,50 +820,12 @@ def main():
     print("=" * 60)
     print("    🎮 ESCAPE THE MAZE - Enhanced Multiplayer Game")
     print("=" * 60)
-    print("✨ NEW FEATURES:")
-    print("• 🏆 Player names and leaderboard")
-    print("• 💎 Collectible items (coins, gems, stars)")
-    print("• 🎨 Enhanced graphics and animations")
-    print("• 🌟 Particle effects and visual feedback")
-    print("• 📊 Detailed player statistics")
-    print("• 🎯 Round-based gameplay")
-    print("=" * 60)
-    print("🎮 CONTROLS:")
-    print("• Arrow keys or WASD: Move your character")
-    print("• R: Reset game")
-    print("• ESC: Quit game")
-    print("=" * 60)
-    
-    player_id = input("Enter your player ID (1-6): ").strip()
-    if not player_id:
-        player_id = "1"
-    
-    player_name = input("Enter your player name: ").strip()
-    if not player_name:
-        player_name = f"Player{player_id}"
-    
-    # Test server connection
-    print(f"🔗 Testing connection to server...")
-    test_client = ClientInterface(player_id, player_name)
-    test_result = test_client.send_command("get_all_players")
-    
-    if test_result['status'] == 'ERROR':
-        print(f"❌ Cannot connect to server: {test_result['message']}")
-        print("\n🔧 Make sure:")
-        print("1. Server is running: python enhanced_maze_server.py")
-        print("2. Server is on the correct port (55556)")
-        print("3. No firewall is blocking the connection")
-        input("\nPress Enter to exit...")
-        return
-    
-    print("✅ Server connection successful!")
-    print(f"🎮 Starting enhanced game for {player_name}...")
-    
+
     try:
         import os
         os.environ['SDL_VIDEO_WINDOW_POS'] = '100,100'
-        
-        game = Game(player_id, player_name)
+
+        game = Game()  # No arguments needed now
         game.run()
     except Exception as e:
         print(f"❌ Error starting game: {e}")
@@ -807,6 +834,7 @@ def main():
         print("2. Try: export DISPLAY=:0 (if using SSH)")
         print("3. Install pygame properly: pip install pygame")
         input("\nPress Enter to exit...")
+
 
 if __name__ == "__main__":
     main()
