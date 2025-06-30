@@ -50,22 +50,6 @@ python -c "import pygame, PIL; print('Dependencies OK')"
 ```bash
 # Default port (55556)
 python maze_server.py
-
-# Custom port
-python maze_server.py 8080
-```
-
-**Output yang diharapkan:**
-```
-============================================================
-    🎮 MAZE GAME SERVER
-============================================================
-Maze HTTP Server running on port 55556
-Game endpoints available:
-   GET  http://localhost:55556/api/status
-   GET  http://localhost:55556/api/gamestate
-   POST http://localhost:55556/api/player/add
-   POST http://localhost:55556/api/player/move
 ```
 
 ### Step 2: Jalankan Client
