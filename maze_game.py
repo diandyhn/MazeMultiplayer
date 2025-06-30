@@ -18,7 +18,7 @@ class MazeGame:
         # Game state
         self.players = {}
         self.player_positions = {}
-        self.player_stats = {}  # New: track player statistics
+        self.player_stats = {}  # Track player statistics
         self.game_started = False
         self.winner = None
         self.game_start_time = time.time()
